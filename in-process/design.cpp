@@ -14,10 +14,22 @@ class Body {
     using size_type = std::size_t;
     using shape_type = std::vector<size_type>;
 
-    Body(const shape_type& shape) {
+    Body() = default;
+
+    void reshape(const shape_type& shape) {
         shape_ = shape;
         size_ = 1;
         for (size_type dimension : shape_) size_ *= dimension;
+    }
+
+    void melt() {
+        shape_.clear();
+        shape_.push_back(size_);
+    }
+
+    void collapse() {
+        size_ = 0;
+        shape_.clear();
     }
 
     size_type size() const { return size_; }
@@ -25,7 +37,7 @@ class Body {
     const shape_type& shape() { return shape_; }
 
     private:
-    size_type size_;
+    size_type size_ = 0;
     shape_type shape_;
 };
 
@@ -40,13 +52,38 @@ enum class Trait {
 template<typename Type, Trait ... > class Tensor;
 
 template<typename Type>
-struct Tensor<Type> {
+class Tensor<Type>  {
+    public:
+    using size_type = typename Body::size_type;
+    using shape_type = typename Body::shape_type;
+    
     virtual ~Tensor() = default;
+
+
+    Body& body() { return body_; }
+    const Body& body() const { return body_; }
+
+    private:
+    Body body_;
 };
 
 template<typename Type>
 class Tensor<Type, Trait::Variable> : public Tensor<Type> {
     public:
+    using size_type = typename Tensor<Type>::size_type;
+    using shape_type = typename Tensor<Type>::shape_type;
+    using Tensor<Type>::body;
+
+    Tensor(const shape_type& shape, bool gradient_requirement = false) {
+        body().reshape(shape);
+        requires_gradient_ = gradient_requirement;
+        if (requires_gradient_) {
+            gradient_ = new Tensor<Type, Trait::Variable>(shape, false);
+        }
+    }
+
+
+
 
     /*
     Tensor(const shape_type& body, bool gradient_requirement = false) {
@@ -83,11 +120,13 @@ class Expression {
 };
 
 template<typename Type> class Linear;
+template<typename Type> class ReLU;
 
 template<typename Type>
 class Tensor<Type, Trait::Expression> : public Tensor<Type> {
     using expression_variant = std::variant<
-        Linear<Type>
+        Linear<Type>,
+        ReLU<Type>
     >;
 
     public:
@@ -97,7 +136,7 @@ class Tensor<Type, Trait::Expression> : public Tensor<Type> {
     }
 
     void print() {
-        std::visit([](auto&& arg) { arg.print(); }, expression_);
+        std::visit([](auto&& argument) { argument.print(); }, expression_);
     }
 
 
@@ -114,10 +153,34 @@ class Linear : public Expression<Type, Linear<Type>> {
     }
 };
 
+template<typename Type>
+class ReLU : public Expression<Type, ReLU<Type>> {
+    public:
+    ReLU() = default;
+    void print() {
+        std::cout << "ReLU" << std::endl;
+    }
+};
+
+class array {
+    public:
+
+    Body& body() { return body_; }
+    const Body& body() const { return body_; }
+
+    private:
+    Body body_;
+};
 
 
 int main() {
-    Tensor<int, Trait::Expression> tensor{Linear<int>()};
-    tensor.print();
+    Tensor<float, Trait::Variable> tensor({1, 2, 3});
+
+    tensor.body().melt();
+    tensor.body().collapse();
+    tensor.body().reshape({3, 2, 3});
+
+    std::cout << tensor.body().size() << std::endl;
+
     return 0;
 }
