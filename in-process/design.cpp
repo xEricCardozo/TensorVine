@@ -1,10 +1,13 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <variant>
 
+// The CaberNet internals need a redesign.
 // Here I will invent some crazy design patterns for my tensor library.
 // This is my hobby, so if you see some crazy stuff, please don't be surprised.
 // just doing it for fun.
+
 
 class Body {
     public:
@@ -29,6 +32,7 @@ class Body {
 enum class Trait {
     Variable,
     Expression,
+    View
 };
 
 // variadic template for tensor
@@ -36,30 +40,84 @@ enum class Trait {
 template<typename Type, Trait ... > class Tensor;
 
 template<typename Type>
-class Tensor<Type> {
-    public:
+struct Tensor<Type> {
     virtual ~Tensor() = default;
-    virtual void backward(Tensor<Type>* gradient) = 0;
-    virtual Tensor<Type>* forward() = 0;
-};
-
-class Base {
-
-
 };
 
 template<typename Type>
-class Tensor<Type, Trait::Variable> : public Tensor<Type>, Base {
+class Tensor<Type, Trait::Variable> : public Tensor<Type> {
+    public:
+
+    /*
+    Tensor(const shape_type& body, bool gradient_requirement = false) {
+        body_ = body;
+        requires_gradient_ = gradient_requirement;
+        if (requires_gradient) {
+            gradient_ = new Tensor<Type, Trait::Variable>(shape, false);
+        }
+    }
+
+    const body_type& body() const { return body_; }
+
+    private:
+    bool requires_gradient_;
+    std::vector<Type> data_;
+    Tensor<Type, Trait::Variable>* gradient_;
+    */
+
+    Tensor<Type, Trait::Variable>* gradient() const { return gradient_; }
+
+    private:
+    bool requires_gradient_;
+    Tensor<Type, Trait::Variable>* gradient_;
+
 
 };
 
-template<typename Type>
-class Tensor<Type, Trait::Expression> : public Tensor<Type>, Base {
+template<typename Type, class Derived>
+class Expression {
+    public:
+    void print() {
+        static_cast<Derived*>(this)->print();
+    }
+};
 
+template<typename Type> class Linear;
+
+template<typename Type>
+class Tensor<Type, Trait::Expression> : public Tensor<Type> {
+    using expression_variant = std::variant<
+        Linear<Type>
+    >;
+
+    public:
+    template<class Expression>
+    Tensor(Expression&& expression) {
+        expression_ = { std::forward<Expression>(expression) };
+    }
+
+    void print() {
+        std::visit([](auto&& arg) { arg.print(); }, expression_);
+    }
+
+
+    private:
+    expression_variant expression_;
+};
+
+template<typename Type>
+class Linear : public Expression<Type, Linear<Type>> {
+    public:
+    Linear() = default;
+    void print() {
+        std::cout << "Linear" << std::endl;
+    }
 };
 
 
 
 int main() {
+    Tensor<int, Trait::Expression> tensor{Linear<int>()};
+    tensor.print();
     return 0;
 }
