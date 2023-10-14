@@ -17,8 +17,8 @@ class Body {
     Body() = default;
 
     void reshape(const shape_type& shape) {
+        size_ = 1; 
         shape_ = shape;
-        size_ = 1;
         for (size_type dimension : shape_) size_ *= dimension;
     }
 
@@ -148,9 +148,16 @@ template<typename Type>
 class Linear : public Expression<Type, Linear<Type>> {
     public:
     Linear() = default;
-    void print() {
-        std::cout << "Linear" << std::endl;
+    Linear(int x) {
+        x_ =  x;
     }
+
+    void print() {
+        std::cout << "Linear" << x_ << std::endl;
+    }
+
+    private:
+    int x_;
 };
 
 template<typename Type>
@@ -174,13 +181,10 @@ class array {
 
 
 int main() {
-    Tensor<float, Trait::Variable> tensor({1, 2, 3});
+    Tensor<int, Trait::Expression>* tensor = new Tensor<int, Trait::Expression>{Linear<int>(2)};
+    tensor->print();
 
-    tensor.body().melt();
-    tensor.body().collapse();
-    tensor.body().reshape({3, 2, 3});
-
-    std::cout << tensor.body().size() << std::endl;
+    delete tensor;
 
     return 0;
 }
