@@ -169,16 +169,6 @@ class ReLU : public Expression<Type, ReLU<Type>> {
     }
 };
 
-class array {
-    public:
-
-    Body& body() { return body_; }
-    const Body& body() const { return body_; }
-
-    private:
-    Body body_;
-};
-
 
 int main() {
     Tensor<int, Trait::Expression>* tensor = new Tensor<int, Trait::Expression>{Linear<int>(2)};
